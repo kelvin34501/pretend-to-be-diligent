@@ -1,0 +1,53 @@
+name: Daily Commit
+
+on:
+  schedule:
+    # Run at 00:00 UTC every day
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual triggering for testing
+
+jobs:
+  daily-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Create daily file
+      run: |
+        # Get today's date in YYYYMMDD format
+        DATE_STR=$(date +%Y%m%d)
+        echo "Creating file for date: $DATE_STR"
+        
+        # Check if file already exists
+        if [ -f "$DATE_STR" ]; then
+          echo "File $DATE_STR already exists, skipping..."
+          exit 0
+        fi
+        
+        # Create the file (touch creates an empty file)
+        touch $DATE_STR
+        
+        # Configure git
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Add and commit the file
+        git add $DATE_STR
+        
+        # Check if there are changes to commit
+        if git diff --cached --quiet; then
+          echo "No changes to commit"
+          exit 0
+        fi
+        
+        git commit -m "$DATE_STR"
+        
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.ref }}
